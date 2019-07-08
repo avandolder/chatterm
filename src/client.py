@@ -36,7 +36,7 @@ def main(args: List[str]) -> int:
         print(f"Sent:\t\t{data}")
         print(f"Received:\t{client.receive()}")
 
-        time.sleep(5)
+        time.sleep(1)
         client.send(" ".join(args[1:]))
         print(f"Sent:\t\t{data}")
         print(f"Received:\t{client.receive()}")
