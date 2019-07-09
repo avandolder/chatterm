@@ -1,30 +1,49 @@
-#!/bin/python3
+#!/usr/bin/python3
 """
 """
 
-import socketserver
+import socket
 import sys
+import threading
 from typing import List
 
 HOST, PORT = "localhost", 9999
 
 
-class RequestHandler(socketserver.StreamRequestHandler):
-    """
-    The TCP request handler for the IRC server.
-    """
+class Server:
+    def __init__(self, host: int, port: int) -> None:
+        self.host = host
+        self.port = port
+        self.connections = []
+        self.threads = []
+        self.mutex = threading.RLock()
 
-    def handle(self) -> None:
-        for line in self.rfile:
-            self.data = line.strip()
-            print(f"{self.client_address[0]} wrote: {self.data}")
-            self.wfile.write(self.data.upper())
+    def run(self) -> None:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((self.host, self.port))
+            s.listen()
+
+            while True:
+                conn, addr = s.accept()
+                self.mutex.acquire()
+                self.connections.append(conn)
+                self.threads.append(
+                    threading.Thread(target=self.handle_client, args=(self, conn))
+                self.mutex.release()
+
+    def handle_client(self, conn: socket.socket) -> None:
+        with conn:
+            nick = ""
+            user = ""
+            while True:
+                cmd = conn.recv(1024)
+                if cmd.startswith(""):
+                    pass
 
 
 def main(args: List[str]) -> int:
-    with socketserver.ThreadingTCPServer((HOST, PORT), RequestHandler) as server:
-        server.serve_forever()
-
+    server = Server(HOST, PORT)
+    server.run()
     return 0
 
 if __name__ == "__main__":
