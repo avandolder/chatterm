@@ -5,7 +5,7 @@
 import socket
 import sys
 import threading
-from typing import Dict, List
+from typing import Dict, List, Union, cast
 
 HOST, PORT = "localhost", 9999
 MESSAGE_SIZE = 1024
@@ -17,15 +17,16 @@ class Server:
     def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
-        self.connections = {} # type: Dict[int, socket.socket]
+        self.connections: Dict[int, socket.socket] = {}
         self.connection_count = 0
-        self.threads = [] # type: List[threading.Thread]
+        self.threads: List[threading.Thread] = []
         self.mutex = threading.RLock()
+        self.nicks: Dict[Union[str, int], Union[str, int]] = {}
 
     def run(self) -> None:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind((self.host, self.port))
-            s.listen()
+            s.listen(10)
 
             while True:
                 conn, addr = s.accept()
@@ -37,25 +38,31 @@ class Server:
                 self.connection_count += 1
                 self.threads[-1].start()
                 self.mutex.release()
+                self.tell_all(f"{self.connection_count - 1} joined chat")
 
     def handle_client(self, *conn_handle: int) -> None:
         conn = self.connections[conn_handle[0]]
+        nick = str(conn_handle[0])
         while True:
             cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
             if not cmd:
                 # Connection is closed
                 break
+            elif cmd.startswith("/nick"):
+                nick = self.set_nick(conn_handle[0], cmd.split()[1])
             else:
-                print(f"received {cmd} from {conn_handle[0]}")
-                self.tell_all(f"{conn_handle[0]}: {cmd}")
+                print(f"received '{cmd}' from {conn_handle[0]} aka {nick}")
+                self.tell_all(f"{nick}: {cmd}")
 
         # Remove connection
+        print(f"closed {conn_handle[0]}")
+        self.tell_all(f"{nick} left chat")
         self.mutex.acquire()
         conn.close()
         self.connections.pop(conn_handle[0], None)
+        self.nicks.pop(nick, None)
+        self.nicks.pop(conn_handle[0], None)
         self.mutex.release()
-        print(f"closed {conn_handle[0]}")
-        self.tell_all(f"{conn_handle[0]} left chat")
 
     def tell_all(self, msg: str) -> None:
         """Send msg to all clients."""
@@ -63,6 +70,20 @@ class Server:
         for conn in self.connections.values():
             conn.sendall(msg.encode())
         self.mutex.release()
+
+    def set_nick(self, handle: int, nick: str) -> str:
+        prev_nick = str(handle)
+        self.mutex.acquire()
+        if handle in self.nicks:
+            prev_nick = cast(str, self.nicks[handle])
+        if nick in self.nicks and self.nicks[nick] != handle:
+            # This nickname is being used by a different client.
+            return prev_nick
+        self.nicks[nick] = handle
+        self.nicks[handle] = nick
+        self.mutex.release()
+        self.tell_all(f"{prev_nick} is now known as {nick}")
+        return nick
 
 
 def main(args: List[str]) -> int:
