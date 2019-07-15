@@ -143,7 +143,7 @@ class ChatWindow:
         elif self.connected:
             self.conn.send("".join(self.inp))
 
-    def run(self, scr) -> None:
+    def run(self, scr) -> int:
         self.running = True
         self.scr = scr
 
@@ -171,13 +171,12 @@ class ChatWindow:
         if self.connected:
             self.conn.close()
         self.connected = False
+        return 0
 
 
 def main(args: List[str]) -> int:
     chat = ChatWindow()
-    curses.wrapper(chat.run)
-
-    return 0
+    return curses.wrapper(chat.run)
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
