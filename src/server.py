@@ -29,7 +29,7 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
-                print("connnected {self.connection_count}")
+                print(f"connnected {self.connection_count}")
                 self.mutex.acquire()
                 self.connections[self.connection_count] = conn
                 self.threads.append(threading.Thread(
