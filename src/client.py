@@ -51,6 +51,8 @@ class ChatWindow:
         self.inp: List[str] = []
         self.inp_cur = 0
         self.nick = ""
+        self.history: List[str] = []
+        self.history_ptr = 0
         self.commands: Dict[str, Callable[..., None]] = {
             "join": self.join_server,
             "leave": self.leave_server,
@@ -72,6 +74,8 @@ class ChatWindow:
         if c == curses.ERR:
             return
         elif c == ord("\n"):
+            self.history.append("".join(self.inp))
+            self.history_ptr = len(self.history)
             self.handle_command()
             self.inp.clear()
         elif c == curses.KEY_BACKSPACE and self.inp:
@@ -83,6 +87,18 @@ class ChatWindow:
             self.inp_cur -= 1
         elif c == curses.KEY_RIGHT:
             self.inp_cur += 1 
+        elif c == curses.KEY_UP and self.history:
+            self.history_ptr = max(0, self.history_ptr - 1)
+            self.inp = list(self.history[self.history_ptr])
+            self.inp_cur = len(self.inp)
+        elif c == curses.KEY_DOWN and self.history:
+            self.history_ptr = min(len(self.history), self.history_ptr + 1)
+            if self.history_ptr == len(self.history):
+                self.inp = []
+                self.inp_cur = 0
+            else:
+                self.inp = list(self.history[self.history_ptr])
+                self.inp_cur = len(self.inp)
         elif chr(c) in string.printable:
             self.inp.insert(self.inp_cur, chr(c))
             self.inp_cur += 1
