@@ -6,11 +6,9 @@ import curses
 import socket
 import string
 import sys
-import time
 import threading
 from typing import Callable, Dict, List, Optional
 
-HOST, PORT = "localhost", 9999
 MESSAGE_SIZE = 1024
 
 
