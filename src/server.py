@@ -29,7 +29,7 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
-                print("connnected {}".format(self.connection_count))
+                print("connnected {self.connection_count}")
                 self.mutex.acquire()
                 self.connections[self.connection_count] = conn
                 self.threads.append(threading.Thread(
@@ -46,7 +46,7 @@ class Server:
                 # Connection is closed
                 break
             else:
-                print("received {}".format(cmd))
+                print(f"received {cmd} from {conn_handle[0]}")
                 self.tell_all(f"{conn_handle[0]}: {cmd}")
 
         # Remove connection

@@ -24,7 +24,7 @@ class Connection:
         self.sock.setblocking(False)
 
     def send(self, data: str) -> None:
-        self.sock.sendall(bytes(data + "\n", "utf-8"))
+        self.sock.sendall(bytes(data, "utf-8"))
 
     def receive(self, n: int = MESSAGE_SIZE) -> str:
         try:
@@ -40,7 +40,6 @@ class ChatWindow:
 
     def tell(self, scr: Any, msg: str) -> None:
         if self.line == curses.LINES - 1:
-            # Move the screen up
             scr.scroll()
             self.line -= 1
         scr.addstr(self.line, 0, msg)
