@@ -8,7 +8,7 @@ import string
 import sys
 import time
 import threading
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
 HOST, PORT = "localhost", 9999
 MESSAGE_SIZE = 1024
@@ -27,9 +27,14 @@ class Connection:
     def send(self, data: str) -> None:
         self.sock.sendall(bytes(data, "utf-8"))
 
-    def receive(self, n: int = MESSAGE_SIZE) -> str:
+    def receive(self, n: int = MESSAGE_SIZE) -> Optional[str]:
         try:
-            return str(self.sock.recv(n), "utf-8")
+            data = str(self.sock.recv(n), "utf-8")
+            if data == "":
+                # If data is empty, and no exception was raised, then the
+                # socket is closed.
+                return None
+            return data
         except BlockingIOError as e:
             return ""
 
@@ -90,12 +95,13 @@ class ChatWindow:
         self.inp_cur = max(0, min(self.inp_cur, len(self.inp)))
 
     def quit(self) -> None:
-        self.leave_server()
+        if self.connected:
+            self.leave_server()
         self.running = False
 
     def clear(self) -> None:
-        self.scr.clear()
         self.line = 0
+        self.scr.clear()
         self.scr.addch(curses.LINES - 1, 0, ">")
 
     def set_nickname(self, nick: str) -> None:
@@ -154,9 +160,12 @@ class ChatWindow:
             self.handle_input()
 
             if self.connected:
-                rcvd = filter(lambda x: x, self.conn.receive().split("\n"))
-                for rcv in rcvd:
-                    self.tell(f"{rcv}")
+                rcvd = self.conn.receive()
+                if rcvd is None:
+                    self.leave_server()
+                else:
+                    for rcv in filter(lambda x: x, self.conn.receive().split("\n")):
+                        self.tell(f"{rcv}")
 
             scr.move(curses.LINES - 1, self.inp_cur + 1)
             scr.refresh()
