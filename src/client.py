@@ -74,11 +74,13 @@ class ChatWindow:
         }
 
     def tell(self, msg: str) -> None:
+        lines = 1 + len(msg)//curses.COLS
         if self.line == curses.LINES - 1:
-            self.scr.scroll()
-            self.line -= 1
+            for i in range(lines):
+                self.scr.scroll()
+            self.line -= lines 
         self.scr.addstr(self.line, 0, msg)
-        self.line += 1
+        self.line += lines
 
     def handle_input(self) -> None:
         c = self.scr.getch()
