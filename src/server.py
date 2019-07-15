@@ -5,17 +5,21 @@
 import socket
 import sys
 import threading
-from typing import List
+from typing import Dict, List
 
 HOST, PORT = "localhost", 9999
+MESSAGE_SIZE = 1024
 
 
 class Server:
-    def __init__(self, host: int, port: int) -> None:
+    """
+    """
+    def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
-        self.connections = []
-        self.threads = []
+        self.connections = {} # type: Dict[int, socket.socket]
+        self.connection_count = 0
+        self.threads = [] # type: List[threading.Thread]
         self.mutex = threading.RLock()
 
     def run(self) -> None:
@@ -25,20 +29,40 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
+                print("connnected {}".format(self.connection_count))
                 self.mutex.acquire()
-                self.connections.append(conn)
-                self.threads.append(
-                    threading.Thread(target=self.handle_client, args=(self, conn))
+                self.connections[self.connection_count] = conn
+                self.threads.append(threading.Thread(
+                    target=self.handle_client, args=[self.connection_count]))
+                self.connection_count += 1
+                self.threads[-1].start()
                 self.mutex.release()
 
-    def handle_client(self, conn: socket.socket) -> None:
-        with conn:
-            nick = ""
-            user = ""
-            while True:
-                cmd = conn.recv(1024)
-                if cmd.startswith(""):
-                    pass
+    def handle_client(self, *conn_handle: int) -> None:
+        conn = self.connections[conn_handle[0]]
+        while True:
+            cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
+            if not cmd:
+                # Connection is closed
+                break
+            else:
+                print("received {}".format(cmd))
+                self.tell_all(f"{conn_handle[0]}: {cmd}")
+
+        # Remove connection
+        self.mutex.acquire()
+        conn.close()
+        self.connections.pop(conn_handle[0], None)
+        self.mutex.release()
+        print(f"closed {conn_handle[0]}")
+        self.tell_all(f"{conn_handle[0]} left chat")
+
+    def tell_all(self, msg: str) -> None:
+        """Send msg to all clients."""
+        self.mutex.acquire()
+        for conn in self.connections.values():
+            conn.sendall(msg.encode())
+        self.mutex.release()
 
 
 def main(args: List[str]) -> int:
