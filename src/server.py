@@ -45,13 +45,18 @@ class Server:
         nick = str(conn_handle[0])
         while True:
             cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
+            print(f"received '{cmd}' from {conn_handle[0]} aka {nick}")
             if not cmd:
                 # Connection is closed
                 break
             elif cmd.startswith("/nick"):
                 nick = self.set_nick(conn_handle[0], cmd.split()[1])
+            elif cmd.startswith("/msg"):
+                nick, *msg = cmd.split()[1:]
+                if nick in self.nicks:
+                    conn = self.connections[cast(int, self.nicks[nick])]
+                    self.tell(conn, f"*{nick}*: {' '.join(msg)}")
             else:
-                print(f"received '{cmd}' from {conn_handle[0]} aka {nick}")
                 self.tell_all(f"{nick}: {cmd}")
 
         # Remove connection
@@ -71,6 +76,12 @@ class Server:
             conn.sendall(msg.encode())
         self.mutex.release()
 
+    def tell(self, conn: socket.socket, msg: str) -> None:
+        """Send msg to specified client."""
+        self.mutex.acquire()
+        conn.sendall(msg.encode())
+        self.mutex.release()
+
     def set_nick(self, handle: int, nick: str) -> str:
         prev_nick = str(handle)
         self.mutex.acquire()
@@ -78,6 +89,7 @@ class Server:
             prev_nick = cast(str, self.nicks[handle])
         if nick in self.nicks and self.nicks[nick] != handle:
             # This nickname is being used by a different client.
+            self.mutex.release()
             return prev_nick
         self.nicks[nick] = handle
         self.nicks[handle] = nick

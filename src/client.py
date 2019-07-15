@@ -19,7 +19,7 @@ class Connection:
         self.port = port
 
     def connect(self) -> None:
-        self.sock.connect((HOST, PORT))
+        self.sock.connect((self.host, self.port))
         self.sock.setblocking(False)
 
     def send(self, data: str) -> None:
@@ -45,10 +45,9 @@ class ChatWindow:
     """
 
     def __init__(self) -> None:
-        self.conn: Connection = None
+        self.conn: Optional[Connection] = None
         self.line = 0
         self.running = False
-        self.connected = False
         self.inp: List[str] = []
         self.inp_cur = 0
         self.nick = ""
@@ -58,6 +57,7 @@ class ChatWindow:
             "quit": self.quit,
             "clear": self.clear,
             "nick": self.set_nickname,
+            "msg": self.direct_message,
         }
 
     def tell(self, msg: str) -> None:
@@ -93,7 +93,7 @@ class ChatWindow:
         self.inp_cur = max(0, min(self.inp_cur, len(self.inp)))
 
     def quit(self) -> None:
-        if self.connected:
+        if self.conn is not None:
             self.leave_server()
         self.running = False
 
@@ -104,32 +104,39 @@ class ChatWindow:
 
     def set_nickname(self, nick: str) -> None:
         self.nick = nick
-        if self.connected:
+        if self.conn is not None:
             self.conn.send(f"/nick {nick}")
         else:
             self.tell(f"Nickname set to {self.nick}")
 
     def join_server(self, host: str, port: str) -> None:
-        if self.connected:
+        if self.conn is not None:
             self.tell("Must leave server before joining another")
             return
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
         self.conn = Connection(sock, host, int(port))
         self.conn.connect()
-        self.connected = True
         self.tell("joined chat")
         if self.nick:
             self.conn.send(f"/nick {self.nick}")
 
     def leave_server(self) -> None:
-        if not self.connected:
+        if self.conn is None:
             self.tell("Must join server before being able to leave")
             return
 
         self.conn.close()
-        self.connected = False
+        self.conn = None
         self.tell("Left chat")
+
+    def direct_message(self, nick: str, *msg: str) -> None:
+        if self.conn is None:
+            self.tell("Join server before MSGing")
+            return
+        msg_str = " ".join(msg)
+        self.conn.send(f"/msg {nick} {msg_str}")
+        self.tell(f"-> *{nick}* {msg_str}")
 
     def handle_command(self) -> None:
         if self.inp and self.inp[0] == "/":
@@ -140,7 +147,7 @@ class ChatWindow:
                 self.commands[cmd_name](*cmd[1:])
             else:
                 self.tell(f"unknown command: {cmd_name}")
-        elif self.connected:
+        elif self.conn is not None:
             self.conn.send("".join(self.inp))
 
     def run(self, scr) -> int:
@@ -157,20 +164,20 @@ class ChatWindow:
         while self.running:
             self.handle_input()
 
-            if self.connected:
+            if self.conn is not None:
                 rcvd = self.conn.receive()
                 if rcvd is None:
                     self.leave_server()
                 else:
-                    for rcv in filter(lambda x: x, self.conn.receive().split("\n")):
+                    for rcv in filter(lambda x: x, rcvd.split("\n")):
                         self.tell(f"{rcv}")
 
             scr.move(curses.LINES - 1, self.inp_cur + 1)
             scr.refresh()
 
-        if self.connected:
+        if self.conn is not None:
             self.conn.close()
-        self.connected = False
+        self.conn = None
         return 0
 
 
