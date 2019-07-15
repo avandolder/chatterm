@@ -44,6 +44,16 @@ class ChatWindow:
     """
     """
 
+    man = {
+        "join": "/join host port - join server",
+        "leave": "/leave - leave current server",
+        "quit": "/quit - quit chat",
+        "clear": "/clear - clear chat window",
+        "nick": "/nick nickname - set nickname",
+        "msg": "/msg name message - send direct message to name",
+        "help": "/help [command] - print help for command",
+    }
+
     def __init__(self) -> None:
         self.conn: Optional[Connection] = None
         self.line = 0
@@ -60,6 +70,7 @@ class ChatWindow:
             "clear": self.clear,
             "nick": self.set_nickname,
             "msg": self.direct_message,
+            "help": self.help,
         }
 
     def tell(self, msg: str) -> None:
@@ -154,6 +165,15 @@ class ChatWindow:
         self.conn.send(f"/msg {nick} {msg_str}")
         self.tell(f"-> *{nick}* {msg_str}")
 
+    def help(self, *cmds: str) -> None:
+        if not cmds:
+            cmds = self.man.keys() # type: ignore
+        for cmd in cmds:
+            if cmd in self.man:
+                self.tell(self.man[cmd])
+            else:
+                self.tell(f"No such command: {cmd}")
+
     def handle_command(self) -> None:
         if self.inp and self.inp[0] == "/":
             # Any line beginning with / is a command.
@@ -165,6 +185,8 @@ class ChatWindow:
                 self.tell(f"unknown command: {cmd_name}")
         elif self.conn is not None:
             self.conn.send("".join(self.inp))
+        else:
+            self.tell("Must join server to chat")
 
     def run(self, scr) -> int:
         self.running = True
