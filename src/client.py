@@ -112,13 +112,13 @@ class ChatWindow:
             else:
                 self.inp = list(self.history[self.history_ptr])
                 self.inp_cur = len(self.inp)
-        elif chr(c) in string.printable:
+        elif chr(c) in string.printable and self.inp_cur < curses.COLS - 2:
             self.inp.insert(self.inp_cur, chr(c))
             self.inp_cur += 1
             
-        self.scr.move(curses.LINES - 1, 1)
+        self.scr.move(curses.LINES - 1, 0)
         self.scr.clrtoeol()
-        self.scr.addstr("".join(self.inp))
+        self.scr.addstr(f">{''.join(self.inp)}")
         self.inp_cur = max(0, min(self.inp_cur, len(self.inp)))
 
     def quit(self) -> None:
