@@ -54,8 +54,8 @@ class ChatWindow:
         "mkch": "channel - make new channel",
         "join": "channel - join channel",
         "list": "- list channels",
-        "names": "[channel] - list users, all or on channel",
-        "help": "[command] - print help for command",
+        "names": "[channels] - list users, all or just on channels",
+        "help": "[commands] - print help for commands",
     }
 
     def __init__(self) -> None:
