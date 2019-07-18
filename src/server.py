@@ -5,9 +5,8 @@
 import socket
 import sys
 import threading
-from typing import Dict, List, Union, cast
+from typing import Dict, List, Set, Union, cast
 
-HOST, PORT = "localhost", 9999
 MESSAGE_SIZE = 1024
 
 
@@ -18,8 +17,8 @@ class Server:
         self.host = host
         self.port = port
         self.connections: Dict[int, socket.socket] = {}
-        self.connection_count = 0
         self.threads: List[threading.Thread] = []
+        self.channels: Dict[str, Set[int]] = {"default": set()}
         self.mutex = threading.RLock()
         self.nicks: Dict[Union[str, int], Union[str, int]] = {}
 
@@ -30,19 +29,21 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
-                print(f"connnected {self.connection_count}")
+                conn_handle = len(self.connections)
+                print(f"connnected {conn_handle}")
                 self.mutex.acquire()
-                self.connections[self.connection_count] = conn
+                self.connections[conn_handle] = conn
                 self.threads.append(threading.Thread(
-                    target=self.handle_client, args=[self.connection_count]))
-                self.connection_count += 1
+                    target=self.handle_client, args=[conn_handle]))
                 self.threads[-1].start()
+                self.channels["default"].add(conn_handle)
                 self.mutex.release()
-                self.tell_all(f"{self.connection_count - 1} joined chat")
+                self.tell_all(f"{conn_handle} joined chat")
 
     def handle_client(self, *conn_handle: int) -> None:
         conn = self.connections[conn_handle[0]]
         nick = str(conn_handle[0])
+        chan = "default"
         while True:
             cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
             print(f"received '{cmd}' from {conn_handle[0]} aka {nick}")
@@ -57,7 +58,7 @@ class Server:
                     conn = self.connections[cast(int, self.nicks[nick])]
                     self.tell(conn, f"*{nick}*: {' '.join(msg)}")
             else:
-                self.tell_all(f"{nick}: {cmd}")
+                self.tell_channel(chan, f"{nick}: {cmd}")
 
         # Remove connection
         print(f"closed {conn_handle[0]}")
@@ -74,6 +75,13 @@ class Server:
         self.mutex.acquire()
         for conn in self.connections.values():
             conn.sendall(msg.encode())
+        self.mutex.release()
+
+    def tell_channel(self, chan: str, msg: str) -> None:
+        """Send msg to eveyone on chan."""
+        self.mutex.acquire()
+        for conn in self.channels[chan]:
+            self.connections[conn].sendall(msg.encode())
         self.mutex.release()
 
     def tell(self, conn: socket.socket, msg: str) -> None:
@@ -99,7 +107,11 @@ class Server:
 
 
 def main(args: List[str]) -> int:
-    server = Server(HOST, PORT)
+    try:
+        server = Server(args[1], int(args[2]))
+    except (IndexError, ValueError) as e:
+        print(f"usage: {args[0]} host port")
+        return 1
     server.run()
     return 0
 
