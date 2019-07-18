@@ -53,6 +53,7 @@ class ChatWindow:
         "msg": "/msg name message - send direct message to name",
         "mkchannel": "/mkchannel channame - make new channel",
         "channel": "/channel channame - join channel",
+        "list": "/list - list channels",
         "help": "/help [command] - print help for command",
     }
 
@@ -74,6 +75,7 @@ class ChatWindow:
             "msg": self.direct_message,
             "mkchannel": self.make_channel,
             "channel": self.join_channel,
+            "list": self.list_channels,
             "help": self.help,
         }
 
@@ -183,6 +185,12 @@ class ChatWindow:
             return
         self.conn.send(f"/channel {chan}")
 
+    def list_channels(self) -> None:
+        if self.conn is None:
+            self.tell("Must join server before LISTing")
+            return
+        self.conn.send("/list")
+
     def help(self, *cmds: str) -> None:
         if not cmds:
             cmds = self.man.keys() # type: ignore
@@ -197,6 +205,7 @@ class ChatWindow:
             # Any line beginning with / is a command.
             cmd = "".join(self.inp).strip().split()
             cmd_name = cmd[0][1:].lower()
+            self.tell(f"/{cmd_name.upper()} {' '.join(cmd[1:])}")
             if cmd_name in self.commands: 
                 self.commands[cmd_name](*cmd[1:])
             else:

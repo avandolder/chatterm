@@ -76,6 +76,8 @@ class Server:
                     self.tell_channel(chan, f"{nick} left {chan}")
                     self.tell_channel(new_chan, f"{nick} joined {new_chan}")
                     chan = new_chan
+            elif cmd.startswith("/list"):
+                self.list_channels(conn)
             else:
                 self.tell_channel(chan, f"{nick}: {cmd}")
 
@@ -93,20 +95,20 @@ class Server:
         """Send msg to all clients."""
         self.mutex.acquire()
         for conn in self.connections.values():
-            conn.sendall(msg.encode())
+            conn.sendall((msg + "\n").encode())
         self.mutex.release()
 
     def tell_channel(self, chan: str, msg: str) -> None:
         """Send msg to eveyone on chan."""
         self.mutex.acquire()
         for conn in self.channels[chan]:
-            self.connections[conn].sendall(msg.encode())
+            self.connections[conn].sendall((msg + "\n").encode())
         self.mutex.release()
 
     def tell(self, conn: socket.socket, msg: str) -> None:
         """Send msg to specified client."""
         self.mutex.acquire()
-        conn.sendall(msg.encode())
+        conn.sendall((msg + "\n").encode())
         self.mutex.release()
 
     def set_nick(self, handle: int, prev_nick: str, nick: str) -> str:
@@ -123,6 +125,11 @@ class Server:
         self.mutex.release()
         self.tell_all(f"{prev_nick} is now known as {nick}")
         return nick
+
+    def list_channels(self, conn: socket.socket) -> None:
+        self.tell(conn, "*** Channel\tUsers")
+        for chan in self.channels:
+            self.tell(conn, f"*** {chan}\t{len(self.channels[chan])}")
 
 
 def main(args: List[str]) -> int:
