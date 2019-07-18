@@ -51,6 +51,8 @@ class ChatWindow:
         "clear": "/clear - clear chat window",
         "nick": "/nick nickname - set nickname",
         "msg": "/msg name message - send direct message to name",
+        "mkchannel": "/mkchannel channame - make new channel",
+        "channel": "/channel channame - join channel",
         "help": "/help [command] - print help for command",
     }
 
@@ -70,6 +72,8 @@ class ChatWindow:
             "clear": self.clear,
             "nick": self.set_nickname,
             "msg": self.direct_message,
+            "mkchannel": self.make_channel,
+            "channel": self.join_channel,
             "help": self.help,
         }
 
@@ -166,6 +170,18 @@ class ChatWindow:
         msg_str = " ".join(msg)
         self.conn.send(f"/msg {nick} {msg_str}")
         self.tell(f"-> *{nick}* {msg_str}")
+
+    def make_channel(self, chan: str) -> None:
+        if self.conn is None:
+            self.tell("Join server before making channels")
+            return
+        self.conn.send(f"/mkchannel {chan}")
+
+    def join_channel(self, chan: str) -> None:
+        if self.conn is None:
+            self.tell("Join server before joining channel")
+            return
+        self.conn.send(f"/channel {chan}")
 
     def help(self, *cmds: str) -> None:
         if not cmds:

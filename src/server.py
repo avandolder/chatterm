@@ -57,6 +57,25 @@ class Server:
                 if nick in self.nicks:
                     conn = self.connections[cast(int, self.nicks[nick])]
                     self.tell(conn, f"*{nick}*: {' '.join(msg)}")
+            elif cmd.startswith("/mkchannel"):
+                new_chan = cmd.split()[1]
+                if new_chan not in self.channels:
+                    self.channels[new_chan] = set()
+                    self.tell_all(f"Channel {new_chan} created")
+                else:
+                    self.tell(conn, f"Channel {new_chan} already exists")
+            elif cmd.startswith("/channel"):
+                new_chan = cmd.split()[1]
+                if new_chan not in self.channels:
+                    self.tell(conn, f"Channel {new_chan} doesn't exist")
+                else:
+                    self.mutex.acquire()
+                    self.channels[chan].remove(conn_handle[0])
+                    self.channels[new_chan].add(conn_handle[0])
+                    self.mutex.release()
+                    self.tell_channel(chan, f"{nick} left {chan}")
+                    self.tell_channel(new_chan, f"{nick} joined {new_chan}")
+                    chan = new_chan
             else:
                 self.tell_channel(chan, f"{nick}: {cmd}")
 
