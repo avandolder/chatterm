@@ -229,7 +229,11 @@ class ChatWindow:
                     self.leave_server()
                 else:
                     for rcv in filter(lambda x: x, rcvd.split("\n")):
-                        self.tell(f"{rcv}")
+                        if rcv.startswith("/nick"):
+                            # Setting nickname failed, go back to previous one
+                            self.nick = rcv.split()[1]
+                        else:
+                            self.tell(f"{rcv}")
 
             scr.move(curses.LINES - 1, self.inp_cur + 1)
             scr.refresh()

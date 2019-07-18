@@ -51,7 +51,7 @@ class Server:
                 # Connection is closed
                 break
             elif cmd.startswith("/nick"):
-                nick = self.set_nick(conn_handle[0], cmd.split()[1])
+                nick = self.set_nick(conn_handle[0], nick, cmd.split()[1])
             elif cmd.startswith("/msg"):
                 nick, *msg = cmd.split()[1:]
                 if nick in self.nicks:
@@ -109,13 +109,13 @@ class Server:
         conn.sendall(msg.encode())
         self.mutex.release()
 
-    def set_nick(self, handle: int, nick: str) -> str:
-        prev_nick = str(handle)
+    def set_nick(self, handle: int, prev_nick: str, nick: str) -> str:
         self.mutex.acquire()
         if handle in self.nicks:
             prev_nick = cast(str, self.nicks[handle])
         if nick in self.nicks and self.nicks[nick] != handle:
             # This nickname is being used by a different client.
+            self.tell(self.connections[handle], f"/nick {prev_nick}")
             self.mutex.release()
             return prev_nick
         self.nicks[nick] = handle
