@@ -99,7 +99,8 @@ class ChatWindow:
             self.history_ptr = len(self.history)
             self.handle_command()
             self.inp.clear()
-        elif c == curses.KEY_BACKSPACE and self.inp:
+        elif (c == curses.KEY_BACKSPACE
+                and len(self.inp) > 0 and self.inp_cur > 0):
             self.inp_cur -= 1
             self.inp.pop(self.inp_cur)
         elif c == curses.KEY_DC and self.inp_cur < len(self.inp):
@@ -127,7 +128,7 @@ class ChatWindow:
         self.scr.move(curses.LINES - 1, 0)
         self.scr.clrtoeol()
         self.scr.addstr(f">{''.join(self.inp)}")
-        self.inp_cur = max(0, min(self.inp_cur, len(self.inp)))
+        self.inp_cur = max(0, min(self.inp_cur, len(self.inp), curses.COLS - 2))
 
     def quit(self) -> None:
         if self.conn is not None:
@@ -245,19 +246,20 @@ class ChatWindow:
                 if rcvd is None:
                     self.leave_server()
                 else:
+                    # Split the received data by line, skipping empty ones.
                     for rcv in filter(lambda x: x, rcvd.split("\n")):
                         if rcv.startswith("/nick"):
                             # Setting nickname failed, go back to previous one
                             self.nick = rcv.split()[1]
                         else:
-                            self.tell(f"{rcv}")
+                            self.tell(rcv)
 
             scr.move(curses.LINES - 1, self.inp_cur + 1)
             scr.refresh()
 
         if self.conn is not None:
             self.conn.close()
-        self.conn = None
+            self.conn = None
         return 0
 
 
