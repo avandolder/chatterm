@@ -57,14 +57,14 @@ class Server:
                 if nick in self.nicks:
                     conn = self.connections[cast(int, self.nicks[nick])]
                     self.tell(conn, f"*{nick}*: {' '.join(msg)}")
-            elif cmd.startswith("/mkchannel"):
+            elif cmd.startswith("/mkch"):
                 new_chan = cmd.split()[1]
                 if new_chan not in self.channels:
                     self.channels[new_chan] = set()
                     self.tell_all(f"Channel {new_chan} created")
                 else:
                     self.tell(conn, f"Channel {new_chan} already exists")
-            elif cmd.startswith("/channel"):
+            elif cmd.startswith("/join"):
                 new_chan = cmd.split()[1]
                 if new_chan not in self.channels:
                     self.tell(conn, f"Channel {new_chan} doesn't exist")
@@ -78,6 +78,8 @@ class Server:
                     chan = new_chan
             elif cmd.startswith("/list"):
                 self.list_channels(conn)
+            elif cmd.startswith("/names"):
+                self.list_users(conn, cmd.split()[1:])
             else:
                 self.tell_channel(chan, f"{nick}: {cmd}")
 
@@ -130,6 +132,20 @@ class Server:
         self.tell(conn, "*** Channel\tUsers")
         for chan in self.channels:
             self.tell(conn, f"*** {chan}\t{len(self.channels[chan])}")
+
+    def list_users(self, conn: socket.socket, chans: List[str]) -> None:
+        if chans:
+            for chan in chans:
+                if chan not in self.channels:
+                    self.tell(conn, f"{chan} channel doesn't exist")
+                    continue
+                handles = self.channels[chan]
+                names = [cast(str, self.nicks[h]) for h in handles if h in self.nicks]
+                self.tell(conn, f"{chan}: {' '.join(names)}")
+                
+        else:
+            names = [cast(str, nick) for nick in self.nicks.keys() if type(nick) is str]
+            self.tell(conn, f"all users: {' '.join(names)}")
 
 
 def main(args: List[str]) -> int:

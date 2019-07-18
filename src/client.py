@@ -45,16 +45,17 @@ class ChatWindow:
     """
 
     man = {
-        "join": "/join host port - join server",
-        "leave": "/leave - leave current server",
-        "quit": "/quit - quit chat",
-        "clear": "/clear - clear chat window",
-        "nick": "/nick nickname - set nickname",
-        "msg": "/msg name message - send direct message to name",
-        "mkchannel": "/mkchannel channame - make new channel",
-        "channel": "/channel channame - join channel",
-        "list": "/list - list channels",
-        "help": "/help [command] - print help for command",
+        "server": "host port - join server",
+        "leave": "- leave current server",
+        "quit": "- quit chat",
+        "clear": "- clear chat window",
+        "nick": "nickname - set nickname",
+        "msg": "name message - send direct message to name",
+        "mkch": "channel - make new channel",
+        "join": "channel - join channel",
+        "list": "- list channels",
+        "names": "[channel] - list users, all or on channel",
+        "help": "[command] - print help for command",
     }
 
     def __init__(self) -> None:
@@ -67,15 +68,16 @@ class ChatWindow:
         self.history: List[str] = []
         self.history_ptr = 0
         self.commands: Dict[str, Callable[..., None]] = {
-            "join": self.join_server,
+            "server": self.join_server,
             "leave": self.leave_server,
             "quit": self.quit,
             "clear": self.clear,
             "nick": self.set_nickname,
             "msg": self.direct_message,
-            "mkchannel": self.make_channel,
-            "channel": self.join_channel,
+            "mkch": self.make_channel,
+            "join": self.join_channel,
             "list": self.list_channels,
+            "names": self.list_users,
             "help": self.help,
         }
 
@@ -183,7 +185,7 @@ class ChatWindow:
         if self.conn is None:
             self.tell("Join server before joining channel")
             return
-        self.conn.send(f"/channel {chan}")
+        self.conn.send(f"/join {chan}")
 
     def list_channels(self) -> None:
         if self.conn is None:
@@ -191,12 +193,18 @@ class ChatWindow:
             return
         self.conn.send("/list")
 
+    def list_users(self, *chans: str) -> None:
+        if self.conn is None:
+            self.tell("Must join server before /NAMES")
+            return
+        self.conn.send(f"/names {' '.join(chans)}")
+
     def help(self, *cmds: str) -> None:
         if not cmds:
             cmds = self.man.keys() # type: ignore
         for cmd in cmds:
             if cmd in self.man:
-                self.tell(self.man[cmd])
+                self.tell(f"/{cmd} {self.man[cmd]}")
             else:
                 self.tell(f"No such command: {cmd}")
 
