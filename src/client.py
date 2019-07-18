@@ -217,6 +217,9 @@ class ChatWindow:
         scr.scrollok(True)
         scr.nodelay(True) # Make input reading non-blocking.
 
+        self.tell("ChatTerm v0.1")
+        self.tell("use /help for help")
+
         while self.running:
             self.handle_input()
 
