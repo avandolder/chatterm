@@ -3,4 +3,4 @@
 *_cache/
 build/
 dist/
-server.spec
+*.spec
