@@ -34,6 +34,7 @@ class Connection:
                 return None
             return data
         except BlockingIOError as e:
+            # No data has been received, but the connection is still active.
             return ""
 
     def close(self) -> None:
@@ -180,7 +181,7 @@ class ChatWindow:
         if self.conn is None:
             self.tell("Join server before making channels")
             return
-        self.conn.send(f"/mkchannel {chan}")
+        self.conn.send(f"/mkch {chan}")
 
     def join_channel(self, chan: str) -> None:
         if self.conn is None:
@@ -250,6 +251,7 @@ class ChatWindow:
                     for rcv in filter(lambda x: x, rcvd.split("\n")):
                         if rcv.startswith("/nick"):
                             # Setting nickname failed, go back to previous one
+                            self.tell("Nickname already taken")
                             self.nick = rcv.split()[1]
                         else:
                             self.tell(rcv)
