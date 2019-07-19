@@ -100,7 +100,7 @@ class ChatWindow:
             self.history_ptr = len(self.history)
             self.handle_command()
             self.inp.clear()
-        elif (c == curses.KEY_BACKSPACE
+        elif ((c == curses.KEY_BACKSPACE or c == ord("\b"))
                 and len(self.inp) > 0 and self.inp_cur > 0):
             self.inp_cur -= 1
             self.inp.pop(self.inp_cur)
