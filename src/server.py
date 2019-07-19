@@ -41,17 +41,19 @@ class Server:
                 self.tell_all(f"{conn_handle} joined chat")
 
     def handle_client(self, *conn_handle: int) -> None:
-        conn = self.connections[conn_handle[0]]
-        nick = str(conn_handle[0])
+        handle = conn_handle[0]
+        conn = self.connections[handle]
+        nick = str(handle)
         chan = "default"
+
         while True:
             cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
-            print(f"received '{cmd}' from {conn_handle[0]} aka {nick}")
+            print(f"received '{cmd}' from {handle} aka {nick}")
             if not cmd:
                 # Connection is closed
                 break
             elif cmd.startswith("/nick"):
-                nick = self.set_nick(conn_handle[0], nick, cmd.split()[1])
+                nick = self.set_nick(handle, nick, cmd.split()[1])
             elif cmd.startswith("/msg"):
                 nick, *msg = cmd.split()[1:]
                 if nick in self.nicks:
@@ -70,8 +72,8 @@ class Server:
                     self.tell(conn, f"Channel {new_chan} doesn't exist")
                 else:
                     self.mutex.acquire()
-                    self.channels[chan].remove(conn_handle[0])
-                    self.channels[new_chan].add(conn_handle[0])
+                    self.channels[chan].remove(handle)
+                    self.channels[new_chan].add(handle)
                     self.mutex.release()
                     self.tell_channel(chan, f"{nick} left {chan}")
                     self.tell_channel(new_chan, f"{nick} joined {new_chan}")
@@ -84,13 +86,13 @@ class Server:
                 self.tell_channel(chan, f"{nick}: {cmd}")
 
         # Remove connection
-        print(f"closed {conn_handle[0]}")
+        print(f"closed {handle}")
         self.tell_all(f"{nick} left chat")
         self.mutex.acquire()
         conn.close()
-        self.connections.pop(conn_handle[0], None)
+        self.connections.pop(handle, None)
         self.nicks.pop(nick, None)
-        self.nicks.pop(conn_handle[0], None)
+        self.nicks.pop(handle, None)
         self.mutex.release()
 
     def tell_all(self, msg: str) -> None:
@@ -101,7 +103,7 @@ class Server:
         self.mutex.release()
 
     def tell_channel(self, chan: str, msg: str) -> None:
-        """Send msg to eveyone on chan."""
+        """Send msg to everyone on chan."""
         self.mutex.acquire()
         for conn in self.channels[chan]:
             self.connections[conn].sendall((msg + "\n").encode())
@@ -118,7 +120,7 @@ class Server:
         if handle in self.nicks:
             prev_nick = cast(str, self.nicks[handle])
         if nick in self.nicks and self.nicks[nick] != handle:
-            # This nickname is being used by a different client.
+            # Inform client this nickname is being used by a different client.
             self.tell(self.connections[handle], f"/nick {prev_nick}")
             self.mutex.release()
             return prev_nick
