@@ -1,5 +1,7 @@
 \documentclass{article}
 
+\usepackage{hyperref}
+
 \title{Project Report}
 \author{Adam Vandolder}
 \date{}
@@ -10,23 +12,66 @@
     \tableofcontents
 	\newpage
 	\pagenumbering{arabic}
+    \linespread{1.6}
+    \selectfont
 
     \section{Introduction}
+    For my Computer Networks project, I decided to create a client-server chat
+    application in Python.
     \section{Features of Application}
+    ChatTerm is a fully functional terminal-based chat server and client, with
+    commands inspired by the IRC protocol. The client uses a text-based user
+    interface, while the server isn't interactive. Many clients can connect to a
+    given server by its domain and port number, and can then communicate with
+    each other. Servers provide a series of different channels that clients can
+    join in order to chat about more specific topics, and clients can make new
+    channels on-the-fly. Clients are free to set non-conflicting nick names for
+    themselves, and request lists of current users connected to the server.
+    Clients can also direct message any other client connected to the same
+    server The client's text window can be cleared of current messages as well.
     \section{Tools and Techniques}
     ChatTerm relies primarily upon Python for its operation.
     More specifically, I made use of Python 3.6 and some of its libraries: sys,
     threading, typing, socket, and string, all of which come with Python by
     default. I also made use of Python's curses library, which only comes with
     Python on Linux and Mac OS X, so on Windows the `windows-curses` library
-    must be installed as well. When writing the project, I mainly used Vim.
+    must be installed as well. When writing the project, I mainly used Vim. In
+    order to create the report, I used LaTex and the texlive package.
+    \section{Implementation Details}
     ChatTerm is based around a server-client architecture, using the TCP
     protocol via the socket library to provide communication between the
     processes. The server is multi-threaded, spinning off a new thread to handle
     each new client that connects. The client is single-threaded, and uses
     curses in order to maintain a Text-User-Interface (TUI) that shows both the
     messages from the server as well as the users input at the same time.
-    \section{Implementation Details}
+    \section{Execution Instructions} 
+    In order to run ChatTerm, you will need Python installed, and at it will
+    need to be at least version 3.6. In order to run the client, you will also
+    need the Curses library installed. If you are running Python on Linux or
+    Mac, then Curses will be installed by default. However, on Windows, you will
+    need to install the \emph{windows-curses} library. This can be installed
+    with the following command:\\
+    \textbf{python -m pip install windows-curses}\\
+    Then, in order to launch the server, you will have to run the following
+    command from the project directory:\\
+    \textbf{python src/server.py domain portnumber}\\
+    If you want to run a server instance that interacts with clients on the same
+    machine, set \emph{domain} to localhost and \emph{portnumber} to a high
+    number that is likely unused, such as 9999.\\
+    In order to launch a client, run the following command:\\
+    \textbf{python src/client.py}\\
+    You can then enter the \emph{/help} command in order to get a list of the
+    supported commands. Enter \emph{/server} followed by the domain and port
+    number you gave the server instance in order to join your local server.
     \section{Conclusion}
     \section{References}
+    When making this project I relied heavily upon the main Python
+    documentation, especially:\\
+    sockets docs: \url{https://docs.python.org/3.6/library/socket.html}\\
+    threading docs: \url{https://docs.python.org/3.6/library/threading.html}\\
+    curses docs: \url{https://docs.python.org/3.6/library/curses.html}\\
+    Curses Programming with Python:
+    \url{https://docs.python.org/3.6/howto/curses.html}\\
+    I also utilized Curses Programming in Python on Dev Dungeon:
+    \url{https://www.devdungeon.com/content/curses-programming-python}\\
 \end{document}
