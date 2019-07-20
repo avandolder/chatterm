@@ -36,7 +36,8 @@
     default. I also made use of Python's curses library, which only comes with
     Python on Linux and Mac OS X, so on Windows the `windows-curses` library
     must be installed as well. When writing the project, I mainly used Vim. In
-    order to create the report, I used LaTex and the texlive package.
+    order to create the report, I used LaTex and the texlive package. In order
+    to generate the Windows binaries, I used the PyInstaller program.
     \section{Implementation Details}
     ChatTerm is based around a server-client architecture, using the TCP
     protocol via the socket library to provide communication between the
@@ -45,6 +46,12 @@
     curses in order to maintain a Text-User-Interface (TUI) that shows both the
     messages from the server as well as the users input at the same time.
     \section{Execution Instructions} 
+    If you are going to be running ChatTerm on Windows, I have included
+    pre-built binaries for the server and client programs. These are accessible
+    as the dist/server/server.exe and dist/client/client.exe respectively. You
+    will still need to pass the domain and port number as command-line arguments
+    to the server program as shown below.
+
     In order to run ChatTerm, you will need Python installed, and at it will
     need to be at least version 3.6. In order to run the client, you will also
     need the Curses library installed. If you are running Python on Linux or
