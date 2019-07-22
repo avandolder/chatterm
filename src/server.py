@@ -58,6 +58,7 @@ class Server:
                 dm_nick, *msg = cmd.split()[1:]
                 if dm_nick in self.nicks:
                     dm_conn = self.connections[cast(int, self.nicks[dm_nick])]
+                    msg_str = " ".join(msg)
                     self.tell(dm_conn, f"*{nick}* {' '.join(msg)}")
                     self.tell(conn, f"-> *{dm_nick}* {msg_str}")
             elif cmd.startswith("/mkch"):
