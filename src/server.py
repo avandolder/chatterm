@@ -56,7 +56,7 @@ class Server:
                 nick = self.set_nick(handle, nick, cmd.split()[1])
             elif cmd.startswith("/msg"):
                 dm_nick, *msg = cmd.split()[1:]
-                if user in self.nicks:
+                if dm_nick in self.nicks:
                     dm_conn = self.connections[cast(int, self.nicks[dm_nick])]
                     self.tell(dm_conn, f"*{nick}* {' '.join(msg)}")
                     self.tell(conn, f"-> *{dm_nick}* {msg_str}")
