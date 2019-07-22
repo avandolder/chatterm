@@ -175,7 +175,6 @@ class ChatWindow:
             return
         msg_str = " ".join(msg)
         self.conn.send(f"/msg {nick} {msg_str}")
-        self.tell(f"-> *{nick}* {msg_str}")
 
     def make_channel(self, chan: str) -> None:
         if self.conn is None:
@@ -247,7 +246,7 @@ class ChatWindow:
                 if rcvd is None:
                     self.leave_server()
                 else:
-                    # Split the received data by line, skipping empty ones.
+                    # Split the received data by line, filtering out empty lines
                     for rcv in filter(lambda x: x, rcvd.split("\n")):
                         if rcv.startswith("/nick"):
                             # Setting nickname failed, go back to previous one

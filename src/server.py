@@ -55,10 +55,11 @@ class Server:
             elif cmd.startswith("/nick"):
                 nick = self.set_nick(handle, nick, cmd.split()[1])
             elif cmd.startswith("/msg"):
-                nick, *msg = cmd.split()[1:]
-                if nick in self.nicks:
-                    conn = self.connections[cast(int, self.nicks[nick])]
-                    self.tell(conn, f"*{nick}*: {' '.join(msg)}")
+                dm_nick, *msg = cmd.split()[1:]
+                if user in self.nicks:
+                    dm_conn = self.connections[cast(int, self.nicks[dm_nick])]
+                    self.tell(dm_conn, f"*{nick}* {' '.join(msg)}")
+                    self.tell(conn, f"-> *{dm_nick}* {msg_str}")
             elif cmd.startswith("/mkch"):
                 new_chan = cmd.split()[1]
                 if new_chan not in self.channels:
