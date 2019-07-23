@@ -17,6 +17,7 @@ class Server:
         self.host = host
         self.port = port
         self.connections: Dict[int, socket.socket] = {}
+        self.connection_count = 0
         self.threads: List[threading.Thread] = []
         self.channels: Dict[str, Set[int]] = {"default": set()}
         self.mutex = threading.RLock()
@@ -29,7 +30,8 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
-                conn_handle = len(self.connections)
+                conn_handle = self.connection_count
+                self.connection_count += 1
                 print(f"connnected {conn_handle}")
                 self.mutex.acquire()
                 self.connections[conn_handle] = conn
