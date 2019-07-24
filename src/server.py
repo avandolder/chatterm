@@ -174,7 +174,7 @@ class Server:
             names = " ".join([
                 cast(str, nick)
                 for nick in self.nicks.keys()
-                if type(nick) is str
+                if type(nick) is str # Ignore the handle entries
             ])
             self.tell(conn, f"all users: {names}")
 
