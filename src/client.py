@@ -56,6 +56,7 @@ class ChatWindow:
         "join": "channel - join channel",
         "list": "- list channels",
         "names": "[channels] - list users, all or just on channels",
+        #"kick": "name - kick user name",
         "help": "[commands] - print help for commands",
     }
 
@@ -79,6 +80,7 @@ class ChatWindow:
             "join": self.join_channel,
             "list": self.list_channels,
             "names": self.list_users,
+            #"kick": self.kick_user,
             "help": self.help,
         }
 
@@ -172,33 +174,39 @@ class ChatWindow:
     def direct_message(self, nick: str, *msg: str) -> None:
         if self.conn is None:
             self.tell("Join server before MSGing")
-            return
-        msg_str = " ".join(msg)
-        self.conn.send(f"/msg {nick} {msg_str}")
+        else:
+            msg_str = " ".join(msg)
+            self.conn.send(f"/msg {nick} {msg_str}")
 
     def make_channel(self, chan: str) -> None:
         if self.conn is None:
             self.tell("Join server before making channels")
-            return
-        self.conn.send(f"/mkch {chan}")
+        else:
+            self.conn.send(f"/mkch {chan}")
 
     def join_channel(self, chan: str) -> None:
         if self.conn is None:
             self.tell("Join server before joining channel")
-            return
-        self.conn.send(f"/join {chan}")
+        else:
+            self.conn.send(f"/join {chan}")
 
     def list_channels(self) -> None:
         if self.conn is None:
             self.tell("Must join server before LISTing")
-            return
-        self.conn.send("/list")
+        else:
+            self.conn.send("/list")
 
     def list_users(self, *chans: str) -> None:
         if self.conn is None:
             self.tell("Must join server before /NAMES")
-            return
-        self.conn.send(f"/names {' '.join(chans)}")
+        else:
+            self.conn.send(f"/names {' '.join(chans)}")
+
+    #def kick_user(self, nick: str) -> None:
+        #if self.conn is None:
+            #self.tell("Must join server before KICKing")
+        #else:
+            #self.conn.send(f"/kick {nick}")
 
     def help(self, *cmds: str) -> None:
         if not cmds:

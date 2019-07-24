@@ -59,7 +59,12 @@ class Server:
         )
 
         while True:
-            cmd = client.conn.recv(MESSAGE_SIZE).decode("utf-8")
+            try:
+                cmd = client.conn.recv(MESSAGE_SIZE).decode("utf-8")
+            except OSError:
+                # Connection has been closed
+                break
+
             print(f"received '{cmd}' from {client.handle} aka {client.nick}")
             if not cmd:
                 # Connection is closed
@@ -69,15 +74,8 @@ class Server:
             else:
                 self.tell_channel(client.chan, f"{client.nick}: {cmd}")
 
-        # Remove connection
-        print(f"{client.handle} aka {client.nick} connection closed")
+        self.remove_client(client)
         self.tell_all(f"{client.nick} left chat")
-        self.mutex.acquire()
-        client.conn.close()
-        self.connections.pop(client.handle, None)
-        self.nicks.pop(client.nick, None)
-        self.nicks.pop(client.handle, None)
-        self.mutex.release()
 
     def handle_command(self, client: ClientInfo, cmd: List[str]) -> None:
         if cmd[0] == "/nick":
@@ -102,6 +100,19 @@ class Server:
             self.list_channels(client.conn)
         elif cmd[0] == "/names":
             self.list_users(client.conn, cmd[1:])
+        #elif cmd[0] == "/kick":
+            #self.kick_user(client, cmd[1])
+        else:
+            self.tell(client.conn, f"invalid command")
+
+    def remove_client(self, client: ClientInfo) -> None:
+        print(f"{client.handle} aka {client.nick} connection closed")
+        self.mutex.acquire()
+        client.conn.close()
+        self.connections.pop(client.handle, None)
+        self.nicks.pop(client.nick, None)
+        self.nicks.pop(client.handle, None)
+        self.mutex.release()
 
     def tell_all(self, msg: str) -> None:
         """Send msg to all clients."""
@@ -177,6 +188,16 @@ class Server:
                 if type(nick) is str # Ignore the handle entries
             ])
             self.tell(conn, f"all users: {names}")
+
+    #def kick_user(self, client: ClientInfo, nick: str) -> None:
+        #if nick not in self.nicks:
+            #self.tell(client.conn, f"Can't kick nonexistent user {nick}")
+            #return
+
+        #self.tell(client.conn, f"{nick} has been kicked")
+        #conn_to_kick = self.connections[cast(int, self.nicks[nick])]
+        #self.tell(conn_to_kick, f"Kicked by {client.nick}")
+        #conn_to_kick.close()
 
 
 def main(args: List[str]) -> int:
