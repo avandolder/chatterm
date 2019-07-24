@@ -10,6 +10,14 @@ from typing import Dict, List, Set, Union, cast
 MESSAGE_SIZE = 1024
 
 
+class ClientInfo:
+    def __init__(self, handle: int, conn: socket.socket, nick: str, chan: str):
+        self.handle = handle
+        self.conn = conn
+        self.nick = nick
+        self.chan = chan
+
+
 class Server:
     """
     """
@@ -43,61 +51,70 @@ class Server:
                 self.tell_all(f"{conn_handle} joined chat")
 
     def handle_client(self, *conn_handle: int) -> None:
-        handle = conn_handle[0]
-        conn = self.connections[handle]
-        nick = str(handle)
-        chan = "default"
+        client = ClientInfo(
+            conn_handle[0],
+            self.connections[conn_handle[0]],
+            str(conn_handle[0]),
+            "default",
+        )
 
         while True:
-            cmd = conn.recv(MESSAGE_SIZE).decode("utf-8")
-            print(f"received '{cmd}' from {handle} aka {nick}")
+            cmd = client.conn.recv(MESSAGE_SIZE).decode("utf-8")
+            print(f"received '{cmd}' from {client.handle} aka {client.nick}")
             if not cmd:
                 # Connection is closed
                 break
-            elif cmd.startswith("/nick"):
-                nick = self.set_nick(handle, nick, cmd.split()[1])
-            elif cmd.startswith("/msg"):
-                dm_nick, *msg = cmd.split()[1:]
-                if dm_nick in self.nicks:
-                    dm_conn = self.connections[cast(int, self.nicks[dm_nick])]
-                    msg_str = " ".join(msg)
-                    self.tell(dm_conn, f"*{nick}* {' '.join(msg)}")
-                    self.tell(conn, f"-> *{dm_nick}* {msg_str}")
-            elif cmd.startswith("/mkch"):
-                new_chan = cmd.split()[1]
-                if new_chan not in self.channels:
-                    self.channels[new_chan] = set()
-                    self.tell_all(f"Channel {new_chan} created")
-                else:
-                    self.tell(conn, f"Channel {new_chan} already exists")
-            elif cmd.startswith("/join"):
-                new_chan = cmd.split()[1]
-                if new_chan not in self.channels:
-                    self.tell(conn, f"Channel {new_chan} doesn't exist")
-                else:
-                    self.mutex.acquire()
-                    self.channels[chan].remove(handle)
-                    self.channels[new_chan].add(handle)
-                    self.mutex.release()
-                    self.tell_channel(chan, f"{nick} left {chan}")
-                    self.tell_channel(new_chan, f"{nick} joined {new_chan}")
-                    chan = new_chan
-            elif cmd.startswith("/list"):
-                self.list_channels(conn)
-            elif cmd.startswith("/names"):
-                self.list_users(conn, cmd.split()[1:])
+            elif cmd[0] == "/":
+                self.handle_command(client, cmd.split())
             else:
-                self.tell_channel(chan, f"{nick}: {cmd}")
+                self.tell_channel(client.chan, f"{client.nick}: {cmd}")
 
         # Remove connection
-        print(f"closed {handle}")
-        self.tell_all(f"{nick} left chat")
+        print(f"{client.handle} aka {client.nick} connection closed")
+        self.tell_all(f"{client.nick} left chat")
         self.mutex.acquire()
-        conn.close()
-        self.connections.pop(handle, None)
-        self.nicks.pop(nick, None)
-        self.nicks.pop(handle, None)
+        client.conn.close()
+        self.connections.pop(client.handle, None)
+        self.nicks.pop(client.nick, None)
+        self.nicks.pop(client.handle, None)
         self.mutex.release()
+
+    def handle_command(self, client: ClientInfo, cmd: List[str]) -> None:
+        if cmd[0] == "/nick":
+            self.set_nick(client, cmd[1])
+        elif cmd[0] == "/msg":
+            nick = cmd[1]
+            if nick in self.nicks:
+                conn = self.connections[cast(int, self.nicks[nick])]
+                msg_str = " ".join(cmd[2:])
+                self.tell(conn, f"*{client.nick}* {msg_str}")
+                self.tell(client.conn, f"-> *{nick}* {msg_str}")
+
+        elif cmd[0] == "/mkch":
+            new_chan = cmd[1]
+            if new_chan not in self.channels:
+                self.channels[new_chan] = set()
+                self.tell_all(f"Channel {new_chan} created")
+            else:
+                self.tell(client.conn, f"Channel {new_chan} already exists")
+
+        elif cmd[0] == "/join":
+            if cmd[1] not in self.channels:
+                self.tell(client.conn, f"Channel {new_chan} doesn't exist")
+            else:
+                self.mutex.acquire()
+                self.channels[client.chan].remove(client.handle)
+                self.channels[cmd[1]].add(client.handle)
+                self.mutex.release()
+                self.tell_channel(
+                    client.chan, f"{client.nick} left {client.chan}")
+                self.tell_channel(cmd[1], f"{client.nick} joined {cmd[1]}")
+                client.chan = cmd[1]
+
+        elif cmd[0] == "/list":
+            self.list_channels(client.conn)
+        elif cmd[0] == "/names":
+            self.list_users(client.conn, cmd[1:])
 
     def tell_all(self, msg: str) -> None:
         """Send msg to all clients."""
@@ -119,20 +136,19 @@ class Server:
         conn.sendall((msg + "\n").encode())
         self.mutex.release()
 
-    def set_nick(self, handle: int, prev_nick: str, nick: str) -> str:
+    def set_nick(self, client: ClientInfo, nick: str) -> None:
         self.mutex.acquire()
-        if handle in self.nicks:
-            prev_nick = cast(str, self.nicks[handle])
-        if nick in self.nicks and self.nicks[nick] != handle:
+        if nick in self.nicks and self.nicks[nick] != client.handle:
             # Inform client this nickname is being used by a different client.
-            self.tell(self.connections[handle], f"/nick {prev_nick}")
             self.mutex.release()
-            return prev_nick
-        self.nicks[nick] = handle
-        self.nicks[handle] = nick
-        self.mutex.release()
-        self.tell_all(f"{prev_nick} is now known as {nick}")
-        return nick
+            self.tell(self.connections[client.handle], f"/nick {client.nick}")
+        else:
+            self.nicks[nick] = client.handle
+            self.nicks[client.handle] = nick
+            self.nicks.pop(client.nick, None)
+            self.mutex.release()
+            self.tell_all(f"{client.nick} is now known as {nick}")
+            client.nick = nick
 
     def list_channels(self, conn: socket.socket) -> None:
         self.tell(conn, "*** Channel\tUsers")
@@ -145,13 +161,22 @@ class Server:
                 if chan not in self.channels:
                     self.tell(conn, f"{chan} channel doesn't exist")
                     continue
+
                 handles = self.channels[chan]
-                names = [cast(str, self.nicks[h]) for h in handles if h in self.nicks]
-                self.tell(conn, f"{chan}: {' '.join(names)}")
+                names = " ".join([
+                    cast(str, self.nicks[h])
+                    for h in handles
+                    if h in self.nicks
+                ])
+                self.tell(conn, f"{chan}: {names}")
                 
         else:
-            names = [cast(str, nick) for nick in self.nicks.keys() if type(nick) is str]
-            self.tell(conn, f"all users: {' '.join(names)}")
+            names = " ".join([
+                cast(str, nick)
+                for nick in self.nicks.keys()
+                if type(nick) is str
+            ])
+            self.tell(conn, f"all users: {names}")
 
 
 def main(args: List[str]) -> int:
