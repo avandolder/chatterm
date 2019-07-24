@@ -89,7 +89,6 @@ class Server:
                 msg_str = " ".join(cmd[2:])
                 self.tell(conn, f"*{client.nick}* {msg_str}")
                 self.tell(client.conn, f"-> *{nick}* {msg_str}")
-
         elif cmd[0] == "/mkch":
             new_chan = cmd[1]
             if new_chan not in self.channels:
@@ -97,20 +96,8 @@ class Server:
                 self.tell_all(f"Channel {new_chan} created")
             else:
                 self.tell(client.conn, f"Channel {new_chan} already exists")
-
         elif cmd[0] == "/join":
-            if cmd[1] not in self.channels:
-                self.tell(client.conn, f"Channel {new_chan} doesn't exist")
-            else:
-                self.mutex.acquire()
-                self.channels[client.chan].remove(client.handle)
-                self.channels[cmd[1]].add(client.handle)
-                self.mutex.release()
-                self.tell_channel(
-                    client.chan, f"{client.nick} left {client.chan}")
-                self.tell_channel(cmd[1], f"{client.nick} joined {cmd[1]}")
-                client.chan = cmd[1]
-
+            self.join_channel(client, cmd[1])
         elif cmd[0] == "/list":
             self.list_channels(client.conn)
         elif cmd[0] == "/names":
@@ -149,6 +136,19 @@ class Server:
             self.mutex.release()
             self.tell_all(f"{client.nick} is now known as {nick}")
             client.nick = nick
+
+    def join_channel(self, client: ClientInfo, chan: str) -> None:
+        if chan not in self.channels:
+            self.tell(client.conn, f"Channel {chan} doesn't exist")
+        else:
+            self.mutex.acquire()
+            self.channels[client.chan].remove(client.handle)
+            self.channels[chan].add(client.handle)
+            self.mutex.release()
+            self.tell_channel(
+                client.chan, f"{client.nick} left {client.chan}")
+            self.tell_channel(chan, f"{client.nick} joined {chan}")
+            client.chan = chan 
 
     def list_channels(self, conn: socket.socket) -> None:
         self.tell(conn, "*** Channel\tUsers")
