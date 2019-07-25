@@ -11,7 +11,7 @@ MESSAGE_SIZE = 1024
 
 
 class ClientInfo:
-    def __init__(self, handle: int, conn: socket.socket, nick: str, chan: str):
+    def __init__(self, handle: int, conn: socket.socket, nick: str, chan: str) -> None:
         self.handle = handle
         self.conn = conn
         self.nick = nick
