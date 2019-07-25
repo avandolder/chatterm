@@ -2,6 +2,7 @@
 """
 """
 
+from datetime import datetime
 import socket
 import sys
 import threading
@@ -65,7 +66,7 @@ class Server:
                 # Connection has been closed
                 break
 
-            print(f"received '{cmd}' from {client.handle} aka {client.nick}")
+            print(f"received '{cmd}' from {client.handle} aka {client.nick} at {datetime.now()}")
             if not cmd:
                 # Connection is closed
                 break
