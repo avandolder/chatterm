@@ -56,7 +56,7 @@ class ChatWindow:
         "join": "channel - join channel",
         "list": "- list channels",
         "names": "[channels] - list users, all or just on channels",
-        #"kick": "name - kick user name",
+        "kick": "name - kick user name",
         "help": "[commands] - print help for commands",
     }
 
@@ -80,7 +80,7 @@ class ChatWindow:
             "join": self.join_channel,
             "list": self.list_channels,
             "names": self.list_users,
-            #"kick": self.kick_user,
+            "kick": self.kick_user,
             "help": self.help,
         }
 
@@ -202,11 +202,11 @@ class ChatWindow:
         else:
             self.conn.send(f"/names {' '.join(chans)}")
 
-    #def kick_user(self, nick: str) -> None:
-        #if self.conn is None:
-            #self.tell("Must join server before KICKing")
-        #else:
-            #self.conn.send(f"/kick {nick}")
+    def kick_user(self, nick: str) -> None:
+        if self.conn is None:
+            self.tell("Must join server before KICKing")
+        else:
+            self.conn.send(f"/kick {nick}")
 
     def help(self, *cmds: str) -> None:
         if not cmds:

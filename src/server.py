@@ -17,6 +17,8 @@ class ClientInfo:
         self.conn = conn
         self.nick = nick
         self.chan = chan
+        self.active = True
+        self.removed = False
 
 
 class Server:
@@ -25,6 +27,7 @@ class Server:
     def __init__(self, host: str, port: int) -> None:
         self.host = host
         self.port = port
+        self.clients: Dict[int, ClientInfo] = {}
         self.connections: Dict[int, socket.socket] = {}
         self.connection_count = 0
         self.threads: List[threading.Thread] = []
@@ -39,31 +42,34 @@ class Server:
 
             while True:
                 conn, addr = s.accept()
-                conn_handle = self.connection_count
-                self.connection_count += 1
-                print(f"connnected {conn_handle}")
                 self.mutex.acquire()
+
+                conn_handle = self.connection_count
+                print(f"connnected {conn_handle}")
+                self.connection_count += 1
+                client = ClientInfo(conn_handle, conn, str(conn_handle), "default")
+
+                self.clients[conn_handle] = client
                 self.connections[conn_handle] = conn
                 self.threads.append(threading.Thread(
                     target=self.handle_client, args=[conn_handle]))
                 self.threads[-1].start()
                 self.channels["default"].add(conn_handle)
+
                 self.mutex.release()
                 self.tell_all(f"{conn_handle} joined chat")
 
     def handle_client(self, *conn_handle: int) -> None:
-        client = ClientInfo(
-            conn_handle[0],
-            self.connections[conn_handle[0]],
-            str(conn_handle[0]),
-            "default",
-        )
-
+        client = self.clients[conn_handle[0]]
+        self.set_nick(client, client.nick)
         while True:
             try:
                 cmd = client.conn.recv(MESSAGE_SIZE).decode("utf-8")
             except OSError:
                 # Connection has been closed
+                break
+
+            if not client.active:
                 break
 
             print(f"received '{cmd}' from {client.handle} aka {client.nick} at {datetime.now()}")
@@ -75,7 +81,8 @@ class Server:
             else:
                 self.tell_channel(client.chan, f"{client.nick}: {cmd}")
 
-        self.remove_client(client)
+        if not client.removed:
+            self.remove_client(client)
         self.tell_all(f"{client.nick} left chat")
 
     def handle_command(self, client: ClientInfo, cmd: List[str]) -> None:
@@ -101,8 +108,8 @@ class Server:
             self.list_channels(client.conn)
         elif cmd[0] == "/names":
             self.list_users(client.conn, cmd[1:])
-        #elif cmd[0] == "/kick":
-            #self.kick_user(client, cmd[1])
+        elif cmd[0] == "/kick":
+            self.kick_user(client, cmd[1])
         else:
             self.tell(client.conn, f"invalid command")
 
@@ -110,10 +117,12 @@ class Server:
         print(f"{client.handle} aka {client.nick} connection closed")
         self.mutex.acquire()
         client.conn.close()
+        self.clients.pop(client.handle, None)
         self.connections.pop(client.handle, None)
         self.nicks.pop(client.nick, None)
         self.nicks.pop(client.handle, None)
         self.mutex.release()
+        client.removed = True
 
     def tell_all(self, msg: str) -> None:
         """Send msg to all clients."""
@@ -190,15 +199,16 @@ class Server:
             ])
             self.tell(conn, f"all users: {names}")
 
-    #def kick_user(self, client: ClientInfo, nick: str) -> None:
-        #if nick not in self.nicks:
-            #self.tell(client.conn, f"Can't kick nonexistent user {nick}")
-            #return
+    def kick_user(self, client: ClientInfo, nick: str) -> None:
+        if nick not in self.nicks:
+            self.tell(client.conn, f"Can't kick nonexistent user {nick}")
+            return
 
-        #self.tell(client.conn, f"{nick} has been kicked")
-        #conn_to_kick = self.connections[cast(int, self.nicks[nick])]
-        #self.tell(conn_to_kick, f"Kicked by {client.nick}")
-        #conn_to_kick.close()
+        self.tell(client.conn, f"{nick} has been kicked")
+        client_to_kick = self.clients[cast(int, self.nicks[nick])]
+        self.tell(client_to_kick.conn, f"Kicked by {client.nick}")
+        client_to_kick.active = False
+        self.remove_client(client_to_kick)
 
 
 def main(args: List[str]) -> int:
