@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime
+from enum import Enum
 import socket
 import sys
 import threading
@@ -11,14 +12,19 @@ from typing import Dict, List, Set, Union, cast
 MESSAGE_SIZE = 1024
 
 
+class ClientStatus(Enum):
+    ACTIVE = auto()
+    INACTIVE = auto()
+    REMOVED = auto()
+
+
 class ClientInfo:
     def __init__(self, handle: int, conn: socket.socket, nick: str, chan: str) -> None:
         self.handle = handle
         self.conn = conn
         self.nick = nick
         self.chan = chan
-        self.active = True
-        self.removed = False
+        self.status = ClientStatus.ACTIVE
 
 
 class Server:
@@ -62,14 +68,14 @@ class Server:
     def handle_client(self, *conn_handle: int) -> None:
         client = self.clients[conn_handle[0]]
         self.set_nick(client, client.nick)
-        while True:
+        while client.status == ClientStatus.ACTIVE:
             try:
                 cmd = client.conn.recv(MESSAGE_SIZE).decode("utf-8")
             except OSError:
                 # Connection has been closed
                 break
 
-            if not client.active:
+            if client.status != ClientStatus.ACTIVE:
                 break
 
             print(f"received '{cmd}' from {client.handle} aka {client.nick} at {datetime.now()}")
@@ -81,7 +87,7 @@ class Server:
             else:
                 self.tell_channel(client.chan, f"{client.nick}: {cmd}")
 
-        if not client.removed:
+        if client.status != ClientStatus.REMOVED:
             self.remove_client(client)
         self.tell_all(f"{client.nick} left chat")
 
@@ -122,7 +128,7 @@ class Server:
         self.nicks.pop(client.nick, None)
         self.nicks.pop(client.handle, None)
         self.mutex.release()
-        client.removed = True
+        client.status = ClientStatus.REMOVED
 
     def tell_all(self, msg: str) -> None:
         """Send msg to all clients."""
@@ -207,7 +213,7 @@ class Server:
         self.tell(client.conn, f"{nick} has been kicked")
         client_to_kick = self.clients[cast(int, self.nicks[nick])]
         self.tell(client_to_kick.conn, f"Kicked by {client.nick}")
-        client_to_kick.active = False
+        client_to_kick.status = ClientStatus.INACTIVE
         self.remove_client(client_to_kick)
 
 
